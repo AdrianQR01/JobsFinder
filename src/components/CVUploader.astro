@@ -1,0 +1,326 @@
+﻿---
+// Import environment variables
+const WEBHOOK_URL = import.meta.env.PUBLIC_N8N_WEBHOOK_URL;
+
+// Validate that the webhook URL is configured
+if (!WEBHOOK_URL) {
+    throw new Error(
+        "PUBLIC_N8N_WEBHOOK_URL is not configured. Please check your .env file.",
+    );
+}
+---
+
+<div
+    class="flex flex-col items-center gap-6 w-full max-w-md mx-auto p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 transition-colors duration-300"
+>
+    <div
+        id="upload-area"
+        class="w-full h-64 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300 cursor-pointer group"
+    >
+        <div
+            id="upload-icon"
+            class="p-4 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-500 dark:text-blue-400 group-hover:scale-110 transition-transform mb-4"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+                class="w-8 h-8"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+                ></path>
+            </svg>
+        </div>
+        <p
+            id="upload-text"
+            class="text-gray-600 dark:text-gray-300 font-medium"
+        >
+            Upload your CV
+        </p>
+        <p
+            id="upload-subtext"
+            class="text-gray-400 dark:text-gray-500 text-sm mt-1"
+        >
+            PDF, DOCX up to 10MB
+        </p>
+        <input
+            id="file-input"
+            type="file"
+            class="hidden"
+            accept=".pdf,.doc,.docx"
+        />
+    </div>
+
+    <button
+        id="send-btn"
+        data-webhook-url={WEBHOOK_URL}
+        class="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-600/20 dark:shadow-blue-500/20 transition-all hover:shadow-blue-600/40 dark:hover:shadow-blue-500/40 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+        <span id="btn-text">Send Application</span>
+    </button>
+</div>
+
+<style>
+    @keyframes pulse-border {
+        0%,
+        100% {
+            border-color: rgb(59, 130, 246);
+            box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+        }
+        50% {
+            border-color: rgb(37, 99, 235);
+            box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+        }
+    }
+
+    .file-uploaded {
+        animation: pulse-border 0.6s ease-out;
+        border-color: rgb(34, 197, 94) !important;
+        background-color: rgb(240, 253, 244) !important;
+    }
+
+    .dark .file-uploaded {
+        background-color: rgb(20, 83, 45) !important;
+    }
+</style>
+
+<script>
+    const uploadArea = document.getElementById("upload-area");
+    const fileInput = document.getElementById("file-input");
+    const uploadIcon = document.getElementById("upload-icon");
+    const uploadText = document.getElementById("upload-text");
+    const uploadSubtext = document.getElementById("upload-subtext");
+    const sendBtn = document.getElementById("send-btn") as HTMLButtonElement;
+    const btnText = document.getElementById("btn-text");
+
+    let selectedFile: File | null = null;
+
+    // Make upload area clickable
+    uploadArea?.addEventListener("click", () => {
+        fileInput?.click();
+    });
+
+    // Handle file selection
+    fileInput?.addEventListener("change", (e) => {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+
+        if (file) {
+            selectedFile = file;
+
+            // Add animation class
+            uploadArea?.classList.add("file-uploaded");
+
+            // Update icon to checkmark
+            if (uploadIcon) {
+                uploadIcon.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                `;
+                uploadIcon.classList.remove(
+                    "bg-blue-50",
+                    "dark:bg-blue-900/30",
+                    "text-blue-500",
+                    "dark:text-blue-400",
+                );
+                uploadIcon.classList.add(
+                    "bg-green-50",
+                    "dark:bg-green-900/30",
+                    "text-green-500",
+                    "dark:text-green-400",
+                );
+            }
+
+            // Update text
+            if (uploadText) {
+                uploadText.textContent = "File Selected!";
+                uploadText.classList.remove(
+                    "text-gray-600",
+                    "dark:text-gray-300",
+                );
+                uploadText.classList.add(
+                    "text-green-600",
+                    "dark:text-green-400",
+                );
+            }
+
+            if (uploadSubtext) {
+                uploadSubtext.textContent = file.name;
+                uploadSubtext.classList.remove(
+                    "text-gray-400",
+                    "dark:text-gray-500",
+                );
+                uploadSubtext.classList.add(
+                    "text-green-600",
+                    "dark:text-green-400",
+                );
+            }
+
+            // Enable send button
+            sendBtn.disabled = false;
+        }
+    });
+
+    // Handle send button click
+    sendBtn?.addEventListener("click", async () => {
+        if (!selectedFile) {
+            alert("Please select a file first");
+            return;
+        }
+
+        // Disable button during upload
+        sendBtn.disabled = true;
+        if (btnText) {
+            btnText.textContent = "Sending...";
+        }
+
+        try {
+            // Create FormData and append the file
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            // Get webhook URL from data attribute
+            const webhookUrl = sendBtn.dataset.webhookUrl;
+            if (!webhookUrl) {
+                throw new Error("Webhook URL not configured");
+            }
+
+            // Send to n8n webhook and wait for response
+            console.log("📤 Sending file to n8n...");
+            const response = await fetch(webhookUrl, {
+                method: "POST",
+                body: formData,
+            });
+
+            // Wait for and parse the response
+            const responseData = await response.json();
+
+            // Log the response to console
+            console.log("✅ Response from n8n:", responseData);
+            console.log(
+                "📊 Full response object:",
+                JSON.stringify(responseData, null, 2),
+            );
+
+            if (response.ok) {
+                // Change styles to indicate success
+                sendBtn.classList.remove(
+                    "bg-blue-600",
+                    "hover:bg-blue-700",
+                    "dark:bg-blue-500",
+                    "dark:hover:bg-blue-600",
+                    "shadow-blue-600/20",
+                    "dark:shadow-blue-500/20",
+                );
+                sendBtn.classList.add(
+                    "bg-green-600",
+                    "hover:bg-green-700",
+                    "dark:bg-green-500",
+                    "dark:hover:bg-green-600",
+                    "shadow-green-600/20",
+                    "dark:shadow-green-500/20",
+                );
+
+                if (btnText) {
+                    btnText.textContent = "Sent Successfully!";
+                }
+
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    sendBtn.classList.add(
+                        "bg-blue-600",
+                        "hover:bg-blue-700",
+                        "dark:bg-blue-500",
+                        "dark:hover:bg-blue-600",
+                        "shadow-blue-600/20",
+                        "dark:shadow-blue-500/20",
+                    );
+                    sendBtn.classList.remove(
+                        "bg-green-600",
+                        "hover:bg-green-700",
+                        "dark:bg-green-500",
+                        "dark:hover:bg-green-600",
+                        "shadow-green-600/20",
+                        "dark:shadow-green-500/20",
+                    );
+                    if (btnText) {
+                        btnText.textContent = "Send Application";
+                    }
+                    sendBtn.disabled = false;
+
+                    // Reset file selection
+                    selectedFile = null;
+                    if (fileInput) {
+                        (fileInput as HTMLInputElement).value = "";
+                    }
+
+                    // Reset upload area
+                    uploadArea?.classList.remove("file-uploaded");
+                    if (uploadIcon) {
+                        uploadIcon.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                            </svg>
+                        `;
+                        uploadIcon.classList.remove(
+                            "bg-green-50",
+                            "dark:bg-green-900/30",
+                            "text-green-500",
+                            "dark:text-green-400",
+                        );
+                        uploadIcon.classList.add(
+                            "bg-blue-50",
+                            "dark:bg-blue-900/30",
+                            "text-blue-500",
+                            "dark:text-blue-400",
+                        );
+                    }
+                    if (uploadText) {
+                        uploadText.textContent = "Upload your CV";
+                        uploadText.classList.remove(
+                            "text-green-600",
+                            "dark:text-green-400",
+                        );
+                        uploadText.classList.add(
+                            "text-gray-600",
+                            "dark:text-gray-300",
+                        );
+                    }
+                    if (uploadSubtext) {
+                        uploadSubtext.textContent = "PDF, DOCX up to 10MB";
+                        uploadSubtext.classList.remove(
+                            "text-green-600",
+                            "dark:text-green-400",
+                        );
+                        uploadSubtext.classList.add(
+                            "text-gray-400",
+                            "dark:text-gray-500",
+                        );
+                    }
+                }, 3000);
+            } else {
+                throw new Error("Upload failed");
+            }
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            if (btnText) {
+                btnText.textContent = "Error! Try Again";
+            }
+            sendBtn.classList.add("bg-red-600", "hover:bg-red-700");
+
+            setTimeout(() => {
+                if (btnText) {
+                    btnText.textContent = "Send Application";
+                }
+                sendBtn.classList.remove("bg-red-600", "hover:bg-red-700");
+                sendBtn.disabled = false;
+            }, 3000);
+        }
+    });
+</script>
